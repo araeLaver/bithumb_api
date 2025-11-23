@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>빗썸 리플(XRP) 매수</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .btn-balance {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .btn-balance:hover:not(:disabled) {
+            background-color: #45a049;
+        }
+        .btn-buy {
+            background-color: #2196F3;
+            color: white;
+        }
+        .btn-buy:hover:not(:disabled) {
+            background-color: #0b7dda;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            border-left: 4px solid #2196F3;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            border-left-color: #f44336;
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            border-left-color: #4CAF50;
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>빗썸 리플(XRP) 매수</h1>
+
+        <div class="input-group">
+            <label for="connectKey">Connect Key:</label>
+            <input type="text" id="connectKey" placeholder="Connect Key를 입력하세요">
+        </div>
+
+        <div class="input-group">
+            <label for="secretKey">Secret Key:</label>
+            <input type="password" id="secretKey" placeholder="Secret Key를 입력하세요">
+        </div>
+
+        <div class="input-group">
+            <label for="buyAmount">매수 금액 (KRW):</label>
+            <input type="number" id="buyAmount" value="6000" placeholder="매수할 금액 (원)">
+        </div>
+
+        <button class="btn-balance" id="balanceBtn" onclick="getBalance()">잔고 조회</button>
+        <button class="btn-buy" id="buyBtn" onclick="buyXRP()">리플(XRP) 매수</button>
+
+        <div id="result" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        const SERVER_URL = 'http://localhost:3000';
+
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'result ' + type;
+            resultDiv.textContent = message;
+        }
+
+        function setButtonsEnabled(enabled) {
+            document.getElementById('balanceBtn').disabled = !enabled;
+            document.getElementById('buyBtn').disabled = !enabled;
+        }
+
+        // 잔고 조회
+        async function getBalance() {
+            const apiKey = document.getElementById('connectKey').value.trim();
+            const secretKey = document.getElementById('secretKey').value.trim();
+
+            if (!apiKey || !secretKey) {
+                showResult('Connect Key와 Secret Key를 입력해주세요.', 'error');
+                return;
+            }
+
+            showResult('잔고 조회 중...', 'info');
+            setButtonsEnabled(false);
+
+            try {
+                const response = await fetch(`${SERVER_URL}/api/balance`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKey,
+                        secretKey: secretKey
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === '0000') {
+                    const krw = parseFloat(result.data.total_krw || 0);
+                    const xrp = parseFloat(result.data.total_xrp || 0);
+                    const availableKrw = parseFloat(result.data.available_krw || 0);
+
+                    const message = `잔고 조회 성공!\n\n` +
+                        `총 KRW: ${krw.toLocaleString()} 원\n` +
+                        `사용가능 KRW: ${availableKrw.toLocaleString()} 원\n` +
+                        `리플(XRP): ${xrp.toLocaleString()} XRP`;
+
+                    showResult(message, 'success');
+                } else {
+                    showResult(`잔고 조회 실패\n에러: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(`API 호출 오류: ${error.message}`, 'error');
+            } finally {
+                setButtonsEnabled(true);
+            }
+        }
+
+        // XRP 시장가 매수
+        async function buyXRP() {
+            const apiKey = document.getElementById('connectKey').value.trim();
+            const secretKey = document.getElementById('secretKey').value.trim();
+            const buyAmount = document.getElementById('buyAmount').value;
+
+            if (!apiKey || !secretKey) {
+                showResult('Connect Key와 Secret Key를 입력해주세요.', 'error');
+                return;
+            }
+
+            if (!buyAmount || buyAmount <= 0) {
+                showResult('매수 금액을 입력해주세요.', 'error');
+                return;
+            }
+
+            showResult('리플(XRP) 매수 주문 중...', 'info');
+            setButtonsEnabled(false);
+
+            try {
+                const response = await fetch(`${SERVER_URL}/api/buy`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        apiKey: apiKey,
+                        secretKey: secretKey,
+                        amount: buyAmount
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === '0000') {
+                    const message = `매수 주문 성공!\n\n` +
+                        `주문 ID: ${result.order_id}\n` +
+                        `매수 금액: ${parseFloat(buyAmount).toLocaleString()} 원\n` +
+                        `매수 수량: ${result.units} XRP\n` +
+                        `현재 시세: ${result.currentPrice.toLocaleString()} 원`;
+
+                    showResult(message, 'success');
+                } else {
+                    showResult(`매수 실패\n에러: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showResult(`매수 오류: ${error.message}`, 'error');
+            } finally {
+                setButtonsEnabled(true);
+            }
+        }
+    </script>
+</body>
+</html>
