@@ -101,13 +101,13 @@ app.get('/api/ticker/:currency', async (req, res) => {
     }
 });
 
-// XRP 시장가 매수
+// 코인 시장가 매수
 app.post('/api/buy', async (req, res) => {
     try {
-        const { apiKey, secretKey, amount } = req.body;
+        const { apiKey, secretKey, amount, coin = 'XRP' } = req.body;
 
         // 현재 시세 조회
-        const tickerResponse = await axios.get(`${API_URL}/public/ticker/XRP_KRW`);
+        const tickerResponse = await axios.get(`${API_URL}/public/ticker/${coin}_KRW`);
 
         if (tickerResponse.data.status !== '0000') {
             return res.status(400).json({
@@ -121,7 +121,7 @@ app.post('/api/buy', async (req, res) => {
 
         // 시장가 매수 주문
         const params = {
-            order_currency: 'XRP',
+            order_currency: coin,
             payment_currency: 'KRW',
             units: units,
             type: 'bid'
@@ -142,10 +142,10 @@ app.post('/api/buy', async (req, res) => {
     }
 });
 
-// XRP 시장가 매도
+// 코인 시장가 매도
 app.post('/api/sell', async (req, res) => {
     try {
-        const { apiKey, secretKey, units } = req.body;
+        const { apiKey, secretKey, units, coin = 'XRP' } = req.body;
 
         if (!units || parseFloat(units) <= 0) {
             return res.status(400).json({
@@ -155,7 +155,7 @@ app.post('/api/sell', async (req, res) => {
         }
 
         // 현재 시세 조회
-        const tickerResponse = await axios.get(`${API_URL}/public/ticker/XRP_KRW`);
+        const tickerResponse = await axios.get(`${API_URL}/public/ticker/${coin}_KRW`);
 
         if (tickerResponse.data.status !== '0000') {
             return res.status(400).json({
@@ -168,7 +168,7 @@ app.post('/api/sell', async (req, res) => {
 
         // 시장가 매도 주문
         const params = {
-            order_currency: 'XRP',
+            order_currency: coin,
             payment_currency: 'KRW',
             units: parseFloat(units).toFixed(4),
             type: 'ask'

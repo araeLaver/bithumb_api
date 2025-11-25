@@ -38,6 +38,15 @@
             border-radius: 5px;
             box-sizing: border-box;
         }
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-size: 14px;
+            cursor: pointer;
+        }
         button {
             width: 100%;
             padding: 15px;
@@ -95,7 +104,28 @@
 </head>
 <body>
     <div class="container">
-        <h1>🪙 빗썸 리플(XRP) 매수</h1>
+        <h1>🪙 빗썸 코인 트레이딩</h1>
+
+        <div class="input-group">
+            <label for="coinSelect">거래 코인 선택:</label>
+            <select id="coinSelect" onchange="updateCoinDisplay()">
+                <option value="XRP">리플 (XRP)</option>
+                <option value="BTC">비트코인 (BTC)</option>
+                <option value="ETH">이더리움 (ETH)</option>
+                <option value="DOGE">도지코인 (DOGE)</option>
+                <option value="ADA">카르다노 (ADA)</option>
+                <option value="SOL">솔라나 (SOL)</option>
+                <option value="MATIC">폴리곤 (MATIC)</option>
+                <option value="DOT">폴카닷 (DOT)</option>
+                <option value="AVAX">아발란체 (AVAX)</option>
+                <option value="LINK">체인링크 (LINK)</option>
+                <option value="TRX">트론 (TRX)</option>
+                <option value="UNI">유니스왑 (UNI)</option>
+                <option value="ATOM">코스모스 (ATOM)</option>
+                <option value="ETC">이더리움클래식 (ETC)</option>
+                <option value="XLM">스텔라루멘 (XLM)</option>
+            </select>
+        </div>
 
         <div class="input-group">
             <label for="connectKey">Connect Key:</label>
@@ -113,17 +143,53 @@
         </div>
 
         <div class="input-group">
-            <label for="sellUnits">매도 수량 (XRP):</label>
-            <input type="number" id="sellUnits" step="0.0001" placeholder="매도할 리플(XRP) 수량">
+            <label for="sellUnits">매도 수량 <span id="coinSymbol">(XRP)</span>:</label>
+            <input type="number" id="sellUnits" step="0.0001" placeholder="매도할 수량">
         </div>
 
         <button class="btn-balance" onclick="getBalance()">💰 잔고 조회</button>
-        <button class="btn-buy" onclick="buyXRP()">🚀 리플(XRP) 매수</button>
-        <button class="btn-sell" onclick="sellXRP()">💸 리플(XRP) 매도</button>
+        <button class="btn-buy" onclick="buyCoin()" id="buyBtn">🚀 매수</button>
+        <button class="btn-sell" onclick="sellCoin()" id="sellBtn">💸 매도</button>
 
         <div id="result" class="result" style="display:none;"></div>
     </div>
 
+    <script>
+        // 코인 이름 매핑
+        const coinNames = {
+            'XRP': '리플',
+            'BTC': '비트코인',
+            'ETH': '이더리움',
+            'DOGE': '도지코인',
+            'ADA': '카르다노',
+            'SOL': '솔라나',
+            'MATIC': '폴리곤',
+            'DOT': '폴카닷',
+            'AVAX': '아발란체',
+            'LINK': '체인링크',
+            'TRX': '트론',
+            'UNI': '유니스왑',
+            'ATOM': '코스모스',
+            'ETC': '이더리움클래식',
+            'XLM': '스텔라루멘'
+        };
+
+        // 코인 선택 변경 시 UI 업데이트
+        function updateCoinDisplay() {
+            const coinSelect = document.getElementById('coinSelect');
+            const selectedCoin = coinSelect.value;
+            const coinName = coinNames[selectedCoin];
+
+            document.getElementById('coinSymbol').textContent = `(${selectedCoin})`;
+            document.getElementById('buyBtn').innerHTML = `🚀 ${coinName}(${selectedCoin}) 매수`;
+            document.getElementById('sellBtn').innerHTML = `💸 ${coinName}(${selectedCoin}) 매도`;
+        }
+
+        // 페이지 로드 시 초기화
+        window.onload = function() {
+            updateCoinDisplay();
+        };
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/enc-base64/1.0.0/enc-base64.min.js"></script>
     <script>
@@ -223,13 +289,30 @@
 
                 if (result.status === '0000') {
                     const krw = parseFloat(result.data.total_krw || 0);
-                    const xrp = parseFloat(result.data.total_xrp || 0);
                     const availableKrw = parseFloat(result.data.available_krw || 0);
 
-                    const message = `✅ 잔고 조회 성공!\n\n` +
+                    let message = `✅ 잔고 조회 성공!\n\n` +
                         `💵 총 KRW: ${krw.toLocaleString()} 원\n` +
-                        `💵 사용가능 KRW: ${availableKrw.toLocaleString()} 원\n` +
-                        `🪙 리플(XRP): ${xrp.toLocaleString()} XRP`;
+                        `💵 사용가능 KRW: ${availableKrw.toLocaleString()} 원\n\n` +
+                        `📊 보유 코인:\n`;
+
+                    // 모든 코인의 잔고 확인
+                    const allCoins = Object.keys(coinNames);
+                    let hasCoins = false;
+
+                    for (const coin of allCoins) {
+                        const coinKey = `total_${coin.toLowerCase()}`;
+                        const coinBalance = parseFloat(result.data[coinKey] || 0);
+
+                        if (coinBalance > 0) {
+                            hasCoins = true;
+                            message += `🪙 ${coinNames[coin]}(${coin}): ${coinBalance.toLocaleString()} ${coin}\n`;
+                        }
+                    }
+
+                    if (!hasCoins) {
+                        message += '(보유한 코인이 없습니다)';
+                    }
 
                     showResult(message, 'success');
                 } else {
@@ -241,11 +324,13 @@
             }
         }
 
-        // XRP 시장가 매수
-        async function buyXRP() {
+        // 코인 시장가 매수
+        async function buyCoin() {
             const connectKey = document.getElementById('connectKey').value.trim();
             const secretKey = document.getElementById('secretKey').value.trim();
             const buyAmount = document.getElementById('buyAmount').value;
+            const selectedCoin = document.getElementById('coinSelect').value;
+            const coinName = coinNames[selectedCoin];
 
             if (!connectKey || !secretKey) {
                 showResult('❌ Connect Key와 Secret Key를 입력해주세요.', 'error');
@@ -257,7 +342,7 @@
                 return;
             }
 
-            showResult('⏳ 리플(XRP) 매수 주문 중...', 'info');
+            showResult(`⏳ ${coinName}(${selectedCoin}) 매수 주문 중...`, 'info');
 
             try {
                 const response = await fetch('http://localhost:3000/api/buy', {
@@ -268,7 +353,8 @@
                     body: JSON.stringify({
                         apiKey: connectKey,
                         secretKey: secretKey,
-                        amount: buyAmount
+                        amount: buyAmount,
+                        coin: selectedCoin
                     })
                 });
 
@@ -278,7 +364,7 @@
                     const message = `✅ 매수 주문 성공!\n\n` +
                         `주문 ID: ${result.order_id}\n` +
                         `매수 금액: ${parseFloat(buyAmount).toLocaleString()} 원\n` +
-                        `매수 수량: ${result.units} XRP\n` +
+                        `매수 수량: ${result.units} ${selectedCoin}\n` +
                         `현재 시세: ${result.currentPrice.toLocaleString()} 원`;
 
                     showResult(message, 'success');
@@ -291,11 +377,13 @@
             }
         }
 
-        // XRP 시장가 매도
-        async function sellXRP() {
+        // 코인 시장가 매도
+        async function sellCoin() {
             const connectKey = document.getElementById('connectKey').value.trim();
             const secretKey = document.getElementById('secretKey').value.trim();
             const sellUnits = document.getElementById('sellUnits').value;
+            const selectedCoin = document.getElementById('coinSelect').value;
+            const coinName = coinNames[selectedCoin];
 
             if (!connectKey || !secretKey) {
                 showResult('❌ Connect Key와 Secret Key를 입력해주세요.', 'error');
@@ -307,7 +395,7 @@
                 return;
             }
 
-            showResult('⏳ 리플(XRP) 매도 주문 중...', 'info');
+            showResult(`⏳ ${coinName}(${selectedCoin}) 매도 주문 중...`, 'info');
 
             try {
                 const response = await fetch('http://localhost:3000/api/sell', {
@@ -318,7 +406,8 @@
                     body: JSON.stringify({
                         apiKey: connectKey,
                         secretKey: secretKey,
-                        units: sellUnits
+                        units: sellUnits,
+                        coin: selectedCoin
                     })
                 });
 
@@ -327,7 +416,7 @@
                 if (result.status === '0000') {
                     const message = `✅ 매도 주문 성공!\n\n` +
                         `주문 ID: ${result.order_id}\n` +
-                        `매도 수량: ${result.units} XRP\n` +
+                        `매도 수량: ${result.units} ${selectedCoin}\n` +
                         `예상 금액: ${parseFloat(result.estimatedAmount).toLocaleString()} 원\n` +
                         `현재 시세: ${result.currentPrice.toLocaleString()} 원`;
 
